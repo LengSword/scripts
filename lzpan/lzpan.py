@@ -8,10 +8,10 @@ from typing import List
 
 import requests
 
-proxies = {
-    "http": 'http://localhost:7890',
-    "https": 'http://localhost:7890',
-}
+# proxies = {
+#     "http": 'http://localhost:7890',
+#     "https": 'http://localhost:7890',
+# }
 
 SEARCH_URL = 'https://s.lzpan.com/search/v1'
 
@@ -58,7 +58,8 @@ def search(name, what='disk', page=1, page_size=20):
         'page': page,
         'size': page_size
     }
-    resp = requests.get(SEARCH_URL, params=params, proxies=proxies)
+    # resp = requests.get(SEARCH_URL, params=params, proxies=proxies)
+    resp = requests.get(SEARCH_URL, params=params)
 
     if resp.status_code != 200:
         print('Error code: {}'.format(resp.status_code))
