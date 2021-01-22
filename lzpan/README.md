@@ -4,8 +4,8 @@
 
 ```shell
 # 搜索 "前端开发"
-lzpan.py "前端开发"
+> lzpan.py "前端开发"
 
 # 使用本地代理搜索 "后端开发"
-lzpan.py "后端开发" --proxy http://127.0.0.1:7890
+> lzpan.py "后端开发" --proxy http://127.0.0.1:7890
 ```

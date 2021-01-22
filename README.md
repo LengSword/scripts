@@ -7,7 +7,7 @@
 进入相应脚本的文件夹进行安装
 
 ```shell
-pip install -r requirements.txt
+> pip install -r requirements.txt
 ```
 
 ## 索引
