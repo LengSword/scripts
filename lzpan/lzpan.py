@@ -3,15 +3,13 @@
 
 import re
 from enum import Enum
-from pydantic.dataclasses import dataclass
 from typing import List
 
+import click
 import requests
+from pydantic.dataclasses import dataclass
 
-# proxies = {
-#     "http": 'http://localhost:7890',
-#     "https": 'http://localhost:7890',
-# }
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 SEARCH_URL = 'https://s.lzpan.com/search/v1'
 
@@ -23,7 +21,7 @@ NO_PASS_PREFIX = '/s/'
 
 
 class DiskType(Enum):
-    BDY = "BDY"
+    BDY = 'BDY'
 
 
 @dataclass
@@ -51,18 +49,30 @@ class ResponseInfo:
     msg: str
 
 
-def search(name, what='disk', page=1, page_size=20):
+@dataclass
+class OptimizedDiskInfo:
+    name: str
+    url: str
+    password: str
+
+
+def search_disk_info(name, what='disk', page=1, page_size=20, proxy=''):
     params = {
         'what': what,
         'kw': name,
         'page': page,
         'size': page_size
     }
-    # resp = requests.get(SEARCH_URL, params=params, proxies=proxies)
-    resp = requests.get(SEARCH_URL, params=params)
+
+    proxies = {
+        "http": proxy,
+        "https": proxy,
+    } if proxy else None
+
+    resp = requests.get(SEARCH_URL, params=params, proxies=proxies)
 
     if resp.status_code != 200:
-        print('Error code: {}'.format(resp.status_code))
+        click.echo('Error code: {}'.format(resp.status_code))
         return None
 
     data = resp.json()
@@ -73,27 +83,51 @@ def search(name, what='disk', page=1, page_size=20):
     return None
 
 
-def get_disk_url_info(disk_data):
-    if disk_data.disk_pass:
-        return (f'{PAN_BAIDU_URL}{HAS_PASS_PREFIX}{disk_data.disk_id}'
-                f'@{disk_data.disk_pass}')
+def get_disk_url(disk_id, disk_pass):
+    if disk_pass:
+        return f'{PAN_BAIDU_URL}{HAS_PASS_PREFIX}{disk_id}'
     else:
-        return f'{PAN_BAIDU_URL}{NO_PASS_PREFIX}1{disk_data.disk_id}'
+        return f'{PAN_BAIDU_URL}{NO_PASS_PREFIX}1{disk_id}'
 
 
 def remove_html_tags(text):
     return re.sub('<.+?>', '', text)
 
 
-def get_all_disk_data(disk_info):
-    for i, disk in enumerate(disk_info):
-        name = remove_html_tags(disk.disk_name)
-        url = get_disk_url_info(disk)
-        print(f'[{i + 1}] - {name} - {url}')
+def get_optimized_disk_info(disk_info):
+    result = [OptimizedDiskInfo(
+        name=remove_html_tags(disk.disk_name),
+        url=get_disk_url(disk.disk_id, disk.disk_pass),
+        password=disk.disk_pass
+    ) for disk in disk_info]
+
+    return result
+
+
+@click.command(context_settings=CONTEXT_SETTINGS, no_args_is_help=True)
+@click.option('--proxy',
+              default='',
+              help='代理地址(可选)',
+              metavar='<proxy-address>')
+@click.argument('name', metavar='<搜索文本>')
+def search(name, proxy):
+    """从懒盘搜索百度网盘分享链接信息
+    """
+    disk_info = search_disk_info(name=name, proxy=proxy)
+
+    click.echo(f'[+] 模糊查找到 {disk_info.data.total} 条结果')
+    click.echo(f'[*] 以下是匹配度最高的前 20 条结果:')
+
+    optimized_disk_info = get_optimized_disk_info(disk_info.data.result)
+    click.echo('index - name - url - password')
+    for i, disk in enumerate(optimized_disk_info):
+        line = f'[{i + 1}] - {disk.name} - {disk.url}'
+
+        if disk.password:
+            line += f' - {disk.password}'
+
+        click.echo(line)
 
 
 if __name__ == '__main__':
-    disk_info = search(name='小肩膀')
-    print(f'[+] 模糊查找到 {disk_info.data.total} 条结果')
-    print(f'以下是匹配度最高的前 20 条结果:')
-    get_all_disk_data(disk_info.data.result)
+    search()
