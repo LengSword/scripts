@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import re
+from datetime import date
 from enum import Enum
 from typing import List
 
@@ -32,6 +33,7 @@ class DiskInfo:
     disk_user: str
     disk_name: str
     disk_info: str
+    created_at: int
     alias: str
 
 
@@ -54,6 +56,7 @@ class OptimizedDiskInfo:
     name: str
     url: str
     password: str
+    created_date: str
 
 
 def search_disk_info(name, what='disk', page=1, page_size=20, proxy=''):
@@ -61,7 +64,9 @@ def search_disk_info(name, what='disk', page=1, page_size=20, proxy=''):
         'what': what,
         'kw': name,
         'page': page,
-        'size': page_size
+        'size': page_size,
+        'disk_type': 'ALL',
+        'time': 'ALL'
     }
 
     proxies = {
@@ -98,7 +103,8 @@ def get_optimized_disk_info(disk_info):
     result = [OptimizedDiskInfo(
         name=remove_html_tags(disk.disk_name),
         url=get_disk_url(disk.disk_id, disk.disk_pass),
-        password=disk.disk_pass
+        password=disk.disk_pass,
+        created_date=str(date.fromtimestamp(disk.created_at))
     ) for disk in disk_info]
 
     return result
@@ -111,7 +117,7 @@ def get_optimized_disk_info(disk_info):
               metavar='<proxy-address>')
 @click.argument('name', metavar='<搜索文本>')
 def search(name, proxy):
-    """从懒盘搜索百度网盘分享链接信息
+    """从懒盘搜索百度网盘/蓝奏盘的分享链接信息
     """
     disk_info = search_disk_info(name=name, proxy=proxy)
 
@@ -119,9 +125,9 @@ def search(name, proxy):
     click.echo(f'[*] 以下是匹配度最高的前 20 条结果:')
 
     optimized_disk_info = get_optimized_disk_info(disk_info.data.result)
-    click.echo('index - name - url - password')
+    click.echo('index(created_date) - name - url - (password)')
     for i, disk in enumerate(optimized_disk_info):
-        line = f'[{i + 1}] - {disk.name} - {disk.url}'
+        line = f'[{i + 1}]({disk.created_date}) - {disk.name} - {disk.url}'
 
         if disk.password:
             line += f' - {disk.password}'
